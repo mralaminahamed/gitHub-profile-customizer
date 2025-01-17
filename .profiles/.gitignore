@@ -1,0 +1,12 @@
+# Ignore everything in profiles except configuration files
+/*
+!.gitignore
+!create-profiles.sh
+!config.js
+!user.js
+!Preferences
+!README.md
+
+# Keep the directory structure
+!*/
+!.keep
