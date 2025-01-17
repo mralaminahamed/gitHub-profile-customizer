@@ -1,189 +1,183 @@
-// src/hooks/useOrganizations.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Organization } from '@/types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Organization, OrganizationStats } from '@/types';
+import type { UseQueryOptions } from '@tanstack/react-query';
+import { sendMessage, isOrganizationsResponse, isOrganizationStatsResponse } from '@/types/messages';
+import React from 'react';
 
-interface UseOrganizationsError {
-  message: string;
-  code: string;
-}
-
-interface OrganizationResponse {
+interface OrganizationState {
   organizations: Organization[];
-  error?: string;
+  stats: OrganizationStats;
 }
 
-interface UpdateOrganizationVisibility {
-  organizationName: string;
-  isHidden: boolean;
+interface UseOrganizationsFilters {
+  searchTerm?: string;
+  type?: Organization['type'];
+  visibility?: 'all' | 'visible' | 'hidden';
 }
 
-export function useOrganizations() {
+// Define the query key type
+const organizationsQueryKey = ['organizations'] as const;
+type OrganizationsQueryKey = typeof organizationsQueryKey;
+
+export function useOrganizations(
+  options?: Omit<UseQueryOptions<OrganizationState, Error, OrganizationState, OrganizationsQueryKey>, 'queryKey' | 'queryFn'>
+) {
   const queryClient = useQueryClient();
 
-  // Fetch organizations
+  // Fetch organizations and stats
   const {
-    data: organizations = [],
+    data,
     isLoading,
-    isError,
     error,
-    refetch,
-    isFetching,
-  } = useQuery<Organization[], UseOrganizationsError>({
-    queryKey: ['organizations'],
-    queryFn: async () => {
+    refetch
+  } = useQuery<OrganizationState, Error, OrganizationState, OrganizationsQueryKey>({
+    queryKey: organizationsQueryKey,
+    queryFn: async (): Promise<OrganizationState> => {
       try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab.id) {
-          throw new Error('No active tab found');
+        const [orgsResponse, statsResponse] = await Promise.all([
+          sendMessage({ type: 'getOrganizations' }),
+          sendMessage({ type: 'getOrganizationStats' })
+        ]);
+
+        if (!isOrganizationsResponse(orgsResponse)) {
+          throw new Error(orgsResponse.error || 'Failed to fetch organizations');
         }
 
-        const response = await chrome.tabs.sendMessage<any, OrganizationResponse>(
-          tab.id,
-          { type: 'getOrganizations' },
-        );
-
-        if (response.error) {
-          throw new Error(response.error);
+        if (!isOrganizationStatsResponse(statsResponse)) {
+          throw new Error(statsResponse.error || 'Failed to fetch organization stats');
         }
 
-        return response.organizations;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw {
-            message: error.message,
-            code: 'FETCH_ERROR',
-          };
-        }
-        throw {
-          message: 'Failed to fetch organizations',
-          code: 'UNKNOWN_ERROR',
+        // Count organizations by type
+        const byType = orgsResponse.organizations.reduce((acc, org) => {
+          acc[org.type] = (acc[org.type] || 0) + 1;
+          return acc;
+        }, {
+          personal: 0,
+          business: 0,
+          opensource: 0,
+          other: 0
+        } as Record<Organization['type'], number>);
+
+        return {
+          organizations: orgsResponse.organizations,
+          stats: {
+            ...statsResponse.stats,
+            byType
+          }
         };
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Failed to fetch organizations'
+        );
       }
     },
-    initialData: [],
-    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
-    retry: 3, // Retry failed requests 3 times
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+    refetchOnWindowFocus: false,
+    ...options
   });
+
+  // Sort organizations by name and type
+  const sortedOrganizations = React.useMemo(() => {
+    return [...(data?.organizations || [])].sort((a, b) => {
+      // First by type
+      if (a.type !== b.type) {
+        const typeOrder = { personal: 0, business: 1, opensource: 2, other: 3 };
+        return typeOrder[a.type] - typeOrder[b.type];
+      }
+      // Then by name
+      return a.name.localeCompare(b.name);
+    });
+  }, [data?.organizations]);
+
+  // Filter organizations
+  const filterOrganizations = React.useCallback((
+    organizations: Organization[],
+    filters: UseOrganizationsFilters
+  ) => {
+    return organizations.filter(org => {
+      // Search term filter
+      if (filters.searchTerm) {
+        const normalizedSearch = filters.searchTerm.toLowerCase().trim();
+        if (!org.name.toLowerCase().includes(normalizedSearch)) {
+          return false;
+        }
+      }
+
+      // Type filter
+      if (filters.type && org.type !== filters.type) {
+        return false;
+      }
+
+      // Visibility filter
+      if (filters.visibility === 'hidden' && !org.isHidden) return false;
+      if (filters.visibility === 'visible' && org.isHidden) return false;
+
+      return true;
+    });
+  }, []);
 
   // Update organization visibility
-  const updateVisibility = useMutation<void, UseOrganizationsError, UpdateOrganizationVisibility>({
-    mutationFn: async ({ organizationName, isHidden }) => {
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab.id) {
-          throw new Error('No active tab found');
-        }
+  const updateOrganizationVisibility = React.useCallback(async (
+    organizationName: string,
+    isHidden: boolean
+  ) => {
+    try {
+      const response = await sendMessage({
+        type: 'updateOrganizationVisibility',
+        organizationName,
+        isHidden
+      });
 
-        const response = await chrome.tabs.sendMessage(tab.id, {
-          type: 'updateOrganizationVisibility',
-          organizationName,
-          isHidden,
-        });
-
-        if (response.error) {
-          throw new Error(response.error);
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          throw {
-            message: error.message,
-            code: 'UPDATE_ERROR',
-          };
-        }
-        throw {
-          message: 'Failed to update organization visibility',
-          code: 'UNKNOWN_ERROR',
-        };
+      if ('error' in response) {
+        throw new Error(response.error);
       }
-    },
-    onSuccess: () => {
-      // Invalidate and refetch organizations after successful update
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-    },
-  });
 
-  // Batch update organizations visibility
-  const batchUpdateVisibility = useMutation<void, UseOrganizationsError, {
+      // Invalidate queries to refetch data
+      await queryClient.invalidateQueries({ queryKey: organizationsQueryKey });
+    } catch (error) {
+      console.error('Failed to update organization visibility:', error);
+      throw error;
+    }
+  }, [queryClient]);
+
+  // Batch update organization visibility
+  const batchUpdateOrganizationVisibility = React.useCallback(async (
     organizationNames: string[],
     isHidden: boolean
-  }>({
-    mutationFn: async ({ organizationNames, isHidden }) => {
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab.id) {
-          throw new Error('No active tab found');
-        }
+  ) => {
+    try {
+      const response = await sendMessage({
+        type: 'batchUpdateOrganizationVisibility',
+        organizationNames,
+        isHidden
+      });
 
-        const response = await chrome.tabs.sendMessage(tab.id, {
-          type: 'batchUpdateOrganizationVisibility',
-          organizationNames,
-          isHidden,
-        });
-
-        if (response.error) {
-          throw new Error(response.error);
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          throw {
-            message: error.message,
-            code: 'BATCH_UPDATE_ERROR',
-          };
-        }
-        throw {
-          message: 'Failed to batch update organizations',
-          code: 'UNKNOWN_ERROR',
-        };
+      if ('error' in response) {
+        throw new Error(response.error);
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-    },
-  });
 
-  // Filter organizations by name
-  const filterOrganizations = (searchTerm: string) => {
-    if (!searchTerm) return organizations;
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return organizations.filter(org =>
-      org.name.toLowerCase().includes(lowerSearchTerm),
-    );
-  };
-
-  // Sort organizations by name
-  const sortOrganizations = (orgs: Organization[]) => {
-    return [...orgs].sort((a, b) => a.name.localeCompare(b.name));
-  };
-
-  // Check if an organization exists
-  const organizationExists = (name: string) => {
-    return organizations.some(org => org.name === name);
-  };
+      // Invalidate queries to refetch data
+      await queryClient.invalidateQueries({ queryKey: organizationsQueryKey });
+    } catch (error) {
+      console.error('Failed to batch update organization visibility:', error);
+      throw error;
+    }
+  }, [queryClient]);
 
   return {
     // Data
-    organizations,
-    sortedOrganizations: sortOrganizations(organizations),
+    organizations: sortedOrganizations,
+    stats: data?.stats,
 
     // Status
     isLoading,
-    isError,
-    error,
-    isFetching,
+    error: error?.message,
 
     // Actions
-    refetch,
-    updateVisibility,
-    batchUpdateVisibility,
-
-    // Utilities
+    refreshOrganizations: refetch,
     filterOrganizations,
-    sortOrganizations,
-    organizationExists,
+    updateOrganizationVisibility,
+    batchUpdateOrganizationVisibility,
   };
 }
-
-// Helper types for better type inference when using the hook
-export type UseOrganizationsReturn = ReturnType<typeof useOrganizations>
-export type OrganizationsError = UseOrganizationsError

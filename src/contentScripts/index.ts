@@ -1,11 +1,11 @@
-// src/contentScripts/index.ts
 import { GitHubProfileManager } from './GitHubProfileManager';
-import type { Message } from '@/types/messages';
+import type { Message, MessageResponse } from '@/types/messages';
 
 let profileManager: GitHubProfileManager | null = null;
 
 /**
  * Initialize the profile manager
+ * @returns Initialized GitHubProfileManager instance
  */
 async function initializeManager() {
   if (!profileManager) {
@@ -15,117 +15,115 @@ async function initializeManager() {
   return profileManager;
 }
 
-// Message listener with unused parameter prefixed with underscore
-chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
+/**
+ * Ensure profile manager is initialized
+ * @throws Error if profile manager is not initialized
+ */
+function ensureManager(): GitHubProfileManager {
   if (!profileManager) {
-    sendResponse({ error: 'Profile manager not initialized' });
-    return true;
+    throw new Error('Profile manager not initialized');
   }
+  return profileManager;
+}
 
-  handleMessage(message, sendResponse).catch((error) => {
-    console.error('Error handling message:', error);
-    sendResponse({ error: error.message || 'An unknown error occurred' });
-  });
+// Message listener
+chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
+  handleMessage(message)
+    .then(sendResponse)
+    .catch((error: Error) => {
+      console.error('Error handling message:', error);
+      sendResponse({ error: error.message || 'An unknown error occurred' });
+    });
 
   return true; // Required for async response
 });
 
 /**
  * Handle individual message types
+ * @param message - Chrome extension message
+ * @returns Promise resolving to message response
  */
-async function handleMessage(message: Message, sendResponse: (response: any) => void) {
+async function handleMessage(message: Message): Promise<MessageResponse> {
   try {
+    const manager = ensureManager();
+
     switch (message.type) {
       case 'getOrganizations':
-        const organizations = profileManager?.getOrganizations();
-        sendResponse({ organizations });
-        break;
+        return {
+          success: true,
+          organizations: manager.getOrganizations()
+        };
 
       case 'updateSettings':
-        await profileManager?.updateSettings(message.settings);
-        sendResponse({ success: true });
-        break;
+        await manager.updateSettings(message.settings);
+        return { success: true };
 
       case 'getState':
-        sendResponse({
-          initialized: profileManager?.getInitializationState(),
-          settings: profileManager?.getCurrentSettings(),
-        });
-        break;
+        return {
+          success: true,
+          initialized: manager.isInitialized(),
+          settings: manager.getSettings()
+        };
 
       case 'updateOrganizationVisibility':
-        if (!profileManager) throw new Error('Profile manager not initialized');
-
-        const currentSettings = profileManager.getCurrentSettings();
-        if (!currentSettings) throw new Error('Settings not initialized');
-
-        const { organizationName, isHidden } = message;
-        const hiddenOrgs = new Set(currentSettings.hiddenOrgs);
-
-        if (isHidden) {
-          hiddenOrgs.add(organizationName);
-        } else {
-          hiddenOrgs.delete(organizationName);
-        }
-
-        await profileManager.updateSettings({
-          hiddenOrgs: Array.from(hiddenOrgs),
-        });
-
-        sendResponse({ success: true });
-        break;
+        await manager.updateOrganizationVisibility(
+          message.organizationName,
+          message.isHidden
+        );
+        return { success: true };
 
       case 'batchUpdateOrganizationVisibility':
-        if (!profileManager) throw new Error('Profile manager not initialized');
-
-        const settings = profileManager.getCurrentSettings();
-        if (!settings) throw new Error('Settings not initialized');
-
-        const { organizationNames, isHidden: batchIsHidden } = message;
-        const updatedHiddenOrgs = new Set(settings.hiddenOrgs);
-
-        organizationNames.forEach(orgName => {
-          if (batchIsHidden) {
-            updatedHiddenOrgs.add(orgName);
-          } else {
-            updatedHiddenOrgs.delete(orgName);
-          }
-        });
-
-        await profileManager.updateSettings({
-          hiddenOrgs: Array.from(updatedHiddenOrgs),
-        });
-
-        sendResponse({ success: true });
-        break;
+        await manager.updateOrganizationVisibility(
+          message.organizationNames.join(','),
+          message.isHidden
+        );
+        return { success: true };
 
       case 'resetSettings':
-        await profileManager?.resetSettings();
-        sendResponse({ success: true });
-        break;
+        await manager.resetSettings();
+        return { success: true };
+
+      case 'updateTheme':
+        await manager.updateTheme(message.accentColor);
+        return { success: true };
+
+      case 'toggleDarkMode':
+        await manager.toggleDarkMode(message.enabled);
+        return { success: true };
+
+      case 'toggleCompactMode':
+        await manager.toggleCompactMode(message.enabled);
+        return { success: true };
+
+      case 'getOrganizationStats':
+        return {
+          success: true,
+          stats: {
+            total: manager.getOrganizationCount(),
+            visible: manager.getVisibleOrganizationCount(),
+            hidden: manager.getHiddenOrganizations().length
+          }
+        };
 
       default:
-        sendResponse({ error: `Unknown message type: ${(message as any).type}` });
+        return {
+          error: `Unknown message type: ${(message as any).type}`
+        };
     }
   } catch (error) {
     if (error instanceof Error) {
-      sendResponse({ error: error.message });
-    } else {
-      sendResponse({ error: 'An unknown error occurred' });
+      return { error: error.message };
     }
+    return { error: 'An unknown error occurred' };
   }
 }
 
-/**
- * Initialize on load
- */
+// Initialize on load
 initializeManager().catch((error) => {
   console.error('Failed to initialize profile manager:', error);
 });
 
-/**
- * Cleanup on window unload
- */
+// Cleanup on window unload
 window.addEventListener('unload', () => {
   if (profileManager) {
     profileManager.destroy();
