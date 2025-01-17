@@ -17,10 +17,10 @@ export async function getManifest() {
         48: './assets/icon-48.png',
         128: './assets/icon-128.png',
       },
-      default_popup: './dist/popup/index.html',
+      default_popup: './popup/index.html',
     },
     options_ui: {
-      page: './dist/options/index.html',
+      page: './options/index.html',
       open_in_tab: true,
     },
     background: {

@@ -281,6 +281,7 @@ export class GitHubProfileManager {
         name: org.getAttribute('aria-label') || '',
         avatar: img ? img.src : '',
         url: link.href || '',
+        // @ts-ignore
         organizations: [] // Add this to match the Organization interface
       })
     })

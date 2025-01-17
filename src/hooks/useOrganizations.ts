@@ -1,189 +1,164 @@
-// src/hooks/useOrganizations.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Organization } from '@/types';
+import { useQuery } from '@tanstack/react-query'
+import type { Organization } from '@/types'
+import React from 'react';
 
 interface UseOrganizationsError {
-  message: string;
-  code: string;
+  message: string
 }
 
 interface OrganizationResponse {
-  organizations: Organization[];
-  error?: string;
+  organizations: Organization[]
+  error?: string
 }
 
-interface UpdateOrganizationVisibility {
-  organizationName: string;
-  isHidden: boolean;
+const sendContentMessage = async (type: string, data?: any) => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab.id) {
+    throw new Error('No active tab found')
+  }
+
+  const response = await chrome.tabs.sendMessage(tab.id, { type, ...data })
+  if (response?.error) {
+    throw new Error(response.error)
+  }
+  return response
 }
 
 export function useOrganizations() {
-  const queryClient = useQueryClient();
-
   // Fetch organizations
   const {
     data: organizations = [],
     isLoading,
-    isError,
     error,
     refetch,
-    isFetching,
   } = useQuery<Organization[], UseOrganizationsError>({
     queryKey: ['organizations'],
     queryFn: async () => {
       try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab.id) {
-          throw new Error('No active tab found');
-        }
-
-        const response = await chrome.tabs.sendMessage<any, OrganizationResponse>(
-          tab.id,
-          { type: 'getOrganizations' },
-        );
-
-        if (response.error) {
-          throw new Error(response.error);
-        }
-
-        return response.organizations;
+        const response = await sendContentMessage('getOrganizations') as OrganizationResponse
+        return response.organizations
       } catch (error) {
-        if (error instanceof Error) {
-          throw {
-            message: error.message,
-            code: 'FETCH_ERROR',
-          };
-        }
         throw {
-          message: 'Failed to fetch organizations',
-          code: 'UNKNOWN_ERROR',
-        };
+          message: error instanceof Error
+            ? error.message
+            : 'Failed to fetch organizations'
+        }
       }
     },
     initialData: [],
-    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
-    retry: 3, // Retry failed requests 3 times
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
-
-  // Update organization visibility
-  const updateVisibility = useMutation<void, UseOrganizationsError, UpdateOrganizationVisibility>({
-    mutationFn: async ({ organizationName, isHidden }) => {
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab.id) {
-          throw new Error('No active tab found');
-        }
-
-        const response = await chrome.tabs.sendMessage(tab.id, {
-          type: 'updateOrganizationVisibility',
-          organizationName,
-          isHidden,
-        });
-
-        if (response.error) {
-          throw new Error(response.error);
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          throw {
-            message: error.message,
-            code: 'UPDATE_ERROR',
-          };
-        }
-        throw {
-          message: 'Failed to update organization visibility',
-          code: 'UNKNOWN_ERROR',
-        };
-      }
-    },
-    onSuccess: () => {
-      // Invalidate and refetch organizations after successful update
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-    },
-  });
-
-  // Batch update organizations visibility
-  const batchUpdateVisibility = useMutation<void, UseOrganizationsError, {
-    organizationNames: string[],
-    isHidden: boolean
-  }>({
-    mutationFn: async ({ organizationNames, isHidden }) => {
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab.id) {
-          throw new Error('No active tab found');
-        }
-
-        const response = await chrome.tabs.sendMessage(tab.id, {
-          type: 'batchUpdateOrganizationVisibility',
-          organizationNames,
-          isHidden,
-        });
-
-        if (response.error) {
-          throw new Error(response.error);
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          throw {
-            message: error.message,
-            code: 'BATCH_UPDATE_ERROR',
-          };
-        }
-        throw {
-          message: 'Failed to batch update organizations',
-          code: 'UNKNOWN_ERROR',
-        };
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-    },
-  });
-
-  // Filter organizations by name
-  const filterOrganizations = (searchTerm: string) => {
-    if (!searchTerm) return organizations;
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return organizations.filter(org =>
-      org.name.toLowerCase().includes(lowerSearchTerm),
-    );
-  };
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+    refetchOnWindowFocus: false,
+  })
 
   // Sort organizations by name
-  const sortOrganizations = (orgs: Organization[]) => {
-    return [...orgs].sort((a, b) => a.name.localeCompare(b.name));
-  };
+  const sortedOrganizations = React.useMemo(() => {
+    return [...organizations].sort((a, b) => a.name.localeCompare(b.name))
+  }, [organizations])
+
+  // Search organizations by name
+  const searchOrganizations = React.useCallback((searchTerm: string) => {
+    if (!searchTerm.trim()) return sortedOrganizations
+
+    const normalizedSearch = searchTerm.toLowerCase().trim()
+    return sortedOrganizations.filter(org =>
+      org.name.toLowerCase().includes(normalizedSearch)
+    )
+  }, [sortedOrganizations])
+
+  // Refresh organizations list
+  const refreshOrganizations = React.useCallback(async () => {
+    try {
+      await refetch()
+    } catch (error) {
+      console.error('Failed to refresh organizations:', error)
+      throw error
+    }
+  }, [refetch])
 
   // Check if an organization exists
-  const organizationExists = (name: string) => {
-    return organizations.some(org => org.name === name);
-  };
+  const hasOrganization = React.useCallback((name: string) => {
+    return organizations.some(org => org.name === name)
+  }, [organizations])
 
   return {
     // Data
-    organizations,
-    sortedOrganizations: sortOrganizations(organizations),
+    organizations: sortedOrganizations,
+    totalOrganizations: organizations.length,
 
     // Status
     isLoading,
-    isError,
-    error,
-    isFetching,
+    error: error?.message,
 
     // Actions
-    refetch,
-    updateVisibility,
-    batchUpdateVisibility,
+    refreshOrganizations,
+    searchOrganizations,
 
-    // Utilities
-    filterOrganizations,
-    sortOrganizations,
-    organizationExists,
-  };
+    // Helpers
+    hasOrganization,
+  }
 }
 
-// Helper types for better type inference when using the hook
+// Export types for external use
 export type UseOrganizationsReturn = ReturnType<typeof useOrganizations>
 export type OrganizationsError = UseOrganizationsError
+
+// Custom hook for search functionality
+export function useOrganizationSearch(defaultTerm = '') {
+  const [searchTerm, setSearchTerm] = React.useState(defaultTerm)
+  const { organizations, searchOrganizations } = useOrganizations()
+
+  const filteredOrganizations = React.useMemo(() =>
+      searchOrganizations(searchTerm),
+    [searchTerm, searchOrganizations]
+  )
+
+  const searchResults = React.useMemo(() => ({
+    organizations: filteredOrganizations,
+    total: organizations.length,
+    filtered: filteredOrganizations.length,
+    hasResults: filteredOrganizations.length > 0,
+    isFiltered: searchTerm.length > 0,
+  }), [filteredOrganizations, organizations.length, searchTerm])
+
+  return {
+    searchTerm,
+    setSearchTerm,
+    ...searchResults,
+  }
+}
+
+// Custom hook for organization selection
+export function useOrganizationSelection() {
+  const [selectedOrgs, setSelectedOrgs] = React.useState<Set<string>>(new Set())
+
+  const toggleSelection = React.useCallback((orgName: string) => {
+    setSelectedOrgs(current => {
+      const updated = new Set(current)
+      if (updated.has(orgName)) {
+        updated.delete(orgName)
+      } else {
+        updated.add(orgName)
+      }
+      return updated
+    })
+  }, [])
+
+  const selectAll = React.useCallback((orgs: Organization[]) => {
+    setSelectedOrgs(new Set(orgs.map(org => org.name)))
+  }, [])
+
+  const clearSelection = React.useCallback(() => {
+    setSelectedOrgs(new Set())
+  }, [])
+
+  return {
+    selectedOrgs,
+    isSelected: (orgName: string) => selectedOrgs.has(orgName),
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    selectionCount: selectedOrgs.size,
+    hasSelection: selectedOrgs.size > 0,
+  }
+}
