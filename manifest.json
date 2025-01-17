@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "GitHub Element Hider",
+    "name": "GitHub Profile Customizer",
     "version": "1.0.0",
     "description": "Customize your GitHub interface by hiding unwanted elements",
 
@@ -37,10 +37,10 @@
     ],
 
     "web_accessible_resources": [{
-        "resources": ["icons/*.svg"],
+        "resources": ["icons/*.png"],
         "matches": ["https://github.com/*"]
     }],
 
     "author": "Al Amin Ahamed",
-    "homepage_url": "https://github.com/mralaminahamed/github-element-hider"
+    "homepage_url": "https://github.com/mralaminahamed/gitHub-profile-customizer"
 }
