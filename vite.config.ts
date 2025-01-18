@@ -28,12 +28,57 @@ const cssConfig = {
   },
 }
 
+// Define major dependencies to split into separate chunks
+const MAJOR_DEPS = {
+  react: ['react', 'react-dom'],
+  tanstack: ['@tanstack/react-query'],
+  ui: ['@headlessui/react', '@heroicons/react', 'framer-motion'],
+  state: ['zustand'],
+  utils: ['webextension-polyfill', 'fs-extra', 'kolorist']
+}
+
+// Chunk splitting strategy
+const getVendorChunkName = (id: string): string => {
+  if (id.includes('node_modules')) {
+    // Check if the dependency belongs to any major dependency group
+    for (const [group, deps] of Object.entries(MAJOR_DEPS)) {
+      if (deps.some(dep => id.includes(dep))) {
+        return `vendor-${group}`
+      }
+    }
+    // Other node_modules dependencies go to a common vendor chunk
+    return 'vendor-common'
+  }
+  return 'index'
+}
+
 // Shared build configuration
 const getSharedBuildConfig = (options: BuildConfig): BuildOptions => ({
   watch: isDev ? {} : null,
+  minify: !isDev,
   outDir: options.outDir,
   emptyOutDir: options.emptyOutDir ?? false,
   sourcemap: options.sourcemap ?? (isDev ? 'inline' : false),
+  chunkSizeWarningLimit: 1024 * 1024,
+  rollupOptions: {
+    output: {
+      manualChunks(id) {
+        return getVendorChunkName(id)
+      },
+      // Ensure consistent chunk naming
+      chunkFileNames: (chunkInfo) => {
+        const name = chunkInfo.name.includes('vendor') ? chunkInfo.name : 'chunks/[name]'
+        return `${name}-[hash].js`
+      },
+      // Ensure assets are placed in a consistent location
+      assetFileNames: (assetInfo) => {
+        if (assetInfo.name?.endsWith('.css')) {
+          return 'styles/[name]-[hash][extname]'
+        }
+        return 'assets/[name]-[hash][extname]'
+      }
+    }
+  }
 })
 
 // Shared Vite configuration
@@ -45,6 +90,11 @@ const sharedConfig: UserConfig = {
     },
   },
   css: cssConfig,
+  build: {
+    target: ['chrome89', 'edge89', 'firefox89', 'safari15'],
+    cssCodeSplit: true,
+    reportCompressedSize: false,
+  }
 }
 
 // Background script build configuration

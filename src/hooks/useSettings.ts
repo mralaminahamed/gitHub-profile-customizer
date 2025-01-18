@@ -8,6 +8,7 @@ interface SettingsState {
   settings: Settings;
   theme: Theme;
   isSaving: boolean;
+  isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
   updateSettings: (newSettings: Partial<Settings>) => Promise<void>;
@@ -118,6 +119,7 @@ export const useSettings = create<SettingsState>()(
       settings: DEFAULT_SETTINGS,
       theme: THEMES[0], // Default light theme
       isSaving: false,
+      isLoading: false,
       error: null,
       isInitialized: false,
 
@@ -175,7 +177,7 @@ export const useSettings = create<SettingsState>()(
 
       initializeSettings: async () => {
         try {
-          set({ isSaving: true, error: null });
+          set({ isSaving: true, isLoading: true, error: null });
 
           // Load settings from Chrome
           const chromeSettings = await loadFromChrome();
@@ -185,11 +187,13 @@ export const useSettings = create<SettingsState>()(
             theme: THEMES[chromeSettings.enableDarkMode ? 1 : 0],
             isInitialized: true,
             isSaving: false,
+            isLoading: false,
           });
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Failed to initialize settings',
             isSaving: false,
+            isLoading: false,
           });
           throw error;
         }

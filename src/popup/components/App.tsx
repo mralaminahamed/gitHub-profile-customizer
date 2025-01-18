@@ -1,20 +1,21 @@
 import React from 'react';
 import { Tab } from '@headlessui/react';
 import clsx from 'clsx';
-import { SparklesIcon } from '@heroicons/react/24/outline';
 import { useSettings } from '@/hooks/useSettings';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useOrganizationSearch } from '@/hooks/useOrganizationSearch';
 import { TABS, THEMES } from '@/constants';
 import type { Theme, Settings } from '@/types';
-import { ErrorAlert, KeyboardShortcutsModal, QuickActions } from './QuickActions';
+import { ErrorAlert, KeyboardShortcutsModal, QuickActions } from '@/popup/components/QuickActions';
 import ProfileTab from '@/popup/components/Tabs/ProfileTab';
 import ActivityTab from '@/popup/components/Tabs/ActivityTab';
 import OrganizationsTab from '@/popup/components/Tabs/OrganizationsTab';
 import SettingsTab from '@/popup/components/Tabs/SettingsTab';
+import { ActivityTabSkeleton, ProfileTabSkeleton, SettingsTabSkeleton } from '@/popup/components/AppSkeleton';
+import ProfileCustomizerIcon from '@/popup/components/ProfileCustomizerIcon';
 
 export const App: React.FC = () => {
-  const { settings, updateSettings, resetSettings, isSaving, error: settingsError, theme, setTheme, exportSettings, importSettings } = useSettings();
+  const { settings, updateSettings, resetSettings, isSaving, isLoading: isLoadingSettings, error: settingsError, theme, setTheme, exportSettings, importSettings } = useSettings();
   const { organizations, stats, isLoading: isLoadingOrgs, error: orgsError, refreshOrganizations, updateOrganizationVisibility, batchUpdateOrganizationVisibility } = useOrganizations();
   const { searchTerm, setSearchTerm, filters, setFilter, filteredOrganizations, resetFilters } = useOrganizationSearch({
     organizations,
@@ -102,7 +103,7 @@ export const App: React.FC = () => {
     <header className="flex items-start justify-between mb-8">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-          <SparklesIcon className="w-6 h-6 text-white" />
+          <ProfileCustomizerIcon size={40}/>
         </div>
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -126,7 +127,7 @@ export const App: React.FC = () => {
 
   return (
     <div className={clsx(
-      'w-[400px] min-h-screen',
+      'w-[450px] min-h-screen',
       'bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800',
       'transition-colors duration-200',
       settings.compactMode ? 'p-4' : 'p-6'
@@ -159,19 +160,30 @@ export const App: React.FC = () => {
         </Tab.List>
         <Tab.Panels className="mt-6">
           <Tab.Panel>
-            <ProfileTab
-              settings={settings}
-              onSettingChange={handleSettingChangeCurried}
-            />
+            {isLoadingSettings ? (
+              <ProfileTabSkeleton />
+            ) : (
+              <ProfileTab
+                settings={settings}
+                onSettingChange={handleSettingChangeCurried}
+              />
+            )}
           </Tab.Panel>
           <Tab.Panel>
-            <ActivityTab
-              settings={settings}
-              onSettingChange={handleSettingChangeCurried}
-            />
+            {isLoadingSettings ? (
+              <ActivityTabSkeleton />
+            ) : (
+              <ActivityTab
+                settings={settings}
+                onSettingChange={handleSettingChangeCurried}
+              />
+            )}
           </Tab.Panel>
           <Tab.Panel>
-            <OrganizationsTab
+            {isLoadingSettings || isLoadingOrgs ? (
+              <ActivityTabSkeleton />
+            ) : (
+              <OrganizationsTab
               settings={settings}
               organizations={filteredOrganizations}
               stats={stats!}
@@ -185,16 +197,21 @@ export const App: React.FC = () => {
               onBatchUpdateVisibility={batchUpdateOrganizationVisibility}
               onSettingChange={handleSettingChangeCurried}
             />
+            )}
           </Tab.Panel>
           <Tab.Panel>
-            <SettingsTab
-              settings={settings}
-              onSettingChange={handleSettingChangeCurried}
-              onThemeChange={handleThemeChange}
-              onExport={exportSettings}
-              onImport={importSettings}
-              onReset={handleReset}
-            />
+            { isLoadingSettings ? (
+              <SettingsTabSkeleton/>
+              ) : (
+              <SettingsTab
+                settings={settings}
+                onSettingChange={handleSettingChangeCurried}
+                onThemeChange={handleThemeChange}
+                onExport={exportSettings}
+                onImport={importSettings}
+                onReset={handleReset}
+              />
+            )}
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>

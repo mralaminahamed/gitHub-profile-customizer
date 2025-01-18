@@ -6,8 +6,12 @@
   color-scheme: light;
 }
 
+html {
+  padding-right: 0 !important;
+}
+
 body {
-  min-width: 384px; /* w-96 */
+  min-width: 450px;
   margin: 0;
   font-family: 'Inter', sans-serif;
 }

@@ -1,0 +1,51 @@
+github-profile-customizer/
+├── src/
+│   ├── assets/
+│   │   ├── icon-16.png
+│   │   ├── icon-48.png
+│   │   └── icon-128.png
+│   │
+│   ├── background/
+│   │   └── index.tsx
+│   │
+│   ├── contentScripts/
+│   │   ├── constants.ts
+│   │   ├── GitHubProfileManager.ts
+│   │   └── index.tsx
+│   │
+│   ├── popup/
+│   │   ├── components/
+│   │   │   ├── OrganizationsSection.tsx
+│   │   │   ├── SettingsSection.tsx
+│   │   │   ├── StatusBadge.tsx
+│   │   │   └── Switch.tsx
+│   │   ├── index.html
+│   │   ├── index.tsx
+│   │   ├── Popup.tsx
+│   │   └── styles.css
+│   │
+│   ├── hooks/
+│   │   ├── useOrganizations.ts
+│   │   └── useSettings.ts
+│   │
+│   ├── types/
+│   │   ├── index.tsx
+│   │   └── messages.ts
+│   │
+│   └── manifest.ts
+│
+├── scripts/
+│   ├── prepare.ts
+│   └── utils.ts
+│
+├── public/
+│   └── .gitkeep
+│
+├── .gitignore
+├── .yarnrc.yml
+├── package.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── vite.config.ts
+├── vite.config.content.ts
+└── README.md
