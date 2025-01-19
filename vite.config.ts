@@ -57,9 +57,11 @@ const baseConfig: UserConfig = {
   },
 }
 
-// Main extension pages (popup & options)
+// Main extension pages (popup)
 const mainConfig: UserConfig = {
   ...baseConfig,
+  root: r('src'),
+  base: 'popup',
   build: {
     ...baseConfig.build,
     outDir: r('dist'),
@@ -71,21 +73,26 @@ const mainConfig: UserConfig = {
       output: {
         extend: true,
         manualChunks: createManualChunks,
-        entryFileNames: '[name]/[name]-[hash].js',
-        chunkFileNames: (chunkInfo) =>{
+        entryFileNames: chunk => {
+          return chunk.name === 'popup' ? 'popup/index-[hash].js' : 'assets/js/[name]-[hash].js'
+        },
+        chunkFileNames: (chunkInfo) => {
           if (chunkInfo.name.startsWith('vendor-')) {
             const name = chunkInfo.name.replace('vendor-', '');
             return `assets/vendor/${name}-[hash].js`;
           }
-          return '[name]/chunks/[name]-[hash].js';
+          return 'assets/js/[name]-[hash].js';
         },
         assetFileNames: (assetInfo) => {
           const ext = assetInfo.name?.split('.').pop()?.toLowerCase() ?? '';
-          if (ext === 'css') return '[name]/[name]-[hash][extname]';
-          if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) {
-            return '[name]/images/[name]-[hash][extname]';
+          if (ext === 'css') {
+            // Place CSS directly in popup directory to match HTML references
+            return 'popup/style-[hash].css';
           }
-          return '[name]/assets/[name]-[hash][extname]';
+          if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) {
+            return 'assets/images/[name]-[hash][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
         },
       },
     },
