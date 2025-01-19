@@ -1,15 +1,10 @@
 import React from 'react';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import type { Settings } from '@/types';
+import type { TabProps } from '@/types';
 import { PROFILE_SECTIONS } from '@/constants';
-import { SettingsGroup, QuickActionButton } from '../Supporting';
+import { SettingsGroup, QuickActionButton } from '@/popup/components/Supporting';
 
-interface ProfileTabProps {
-  settings: Settings;
-  onSettingChange: (key: keyof Settings) => (value: any) => void;
-}
-
-export const ProfileTab: React.FC<ProfileTabProps> = ({ settings, onSettingChange }) => {
+export const ProfileTab: React.FC<TabProps> = ({ settings, onSettingChange }) => {
   // Split sections into categories for better organization
   const sections = React.useMemo(() => ({
     profile: PROFILE_SECTIONS.filter(section =>

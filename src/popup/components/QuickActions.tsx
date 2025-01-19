@@ -21,14 +21,7 @@ interface QuickActionsProps {
   onExport: () => void;
 }
 
-export const QuickActions: React.FC<QuickActionsProps> = ({
-                                                            settings,
-                                                            theme,
-                                                            onThemeChange,
-                                                            onToggleKeyboardShortcuts,
-                                                            onImport,
-                                                            onExport
-                                                          }) => (
+export const QuickActions: React.FC<QuickActionsProps> = ({ settings, theme, onThemeChange, onToggleKeyboardShortcuts, onImport, onExport }) => (
   <div className="flex items-center gap-2">
     {/* Theme Selector */}
     <Menu as="div" className="relative">

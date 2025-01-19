@@ -16,7 +16,7 @@ const TabSkeleton: React.FC = () => (
   </div>
 );
 
-export const AppSkeleton: React.FC<{ isCompact?: boolean }> = ({ isCompact = false }) => {
+export const Skeletons: React.FC<{ isCompact?: boolean }> = ({ isCompact = false }) => {
   return (
     <div className={clsx(
       'w-[400px] min-h-screen',
@@ -178,4 +178,4 @@ export const SettingsTabSkeleton: React.FC = () => (
   </div>
 );
 
-export default AppSkeleton;
+export default Skeletons;

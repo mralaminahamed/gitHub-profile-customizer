@@ -11,8 +11,8 @@ import ProfileTab from '@/popup/components/Tabs/ProfileTab';
 import ActivityTab from '@/popup/components/Tabs/ActivityTab';
 import OrganizationsTab from '@/popup/components/Tabs/OrganizationsTab';
 import SettingsTab from '@/popup/components/Tabs/SettingsTab';
-import { ActivityTabSkeleton, ProfileTabSkeleton, SettingsTabSkeleton } from '@/popup/components/AppSkeleton';
-import ProfileCustomizerIcon from '@/popup/components/ProfileCustomizerIcon';
+import { ActivityTabSkeleton, ProfileTabSkeleton, SettingsTabSkeleton } from '@/popup/components/Skeletons';
+import AppIcon from '@/popup/components/AppIcon';
 
 export const App: React.FC = () => {
   const { settings, updateSettings, resetSettings, isSaving, isLoading: isLoadingSettings, error: settingsError, theme, setTheme, exportSettings, importSettings } = useSettings();
@@ -103,7 +103,7 @@ export const App: React.FC = () => {
     <header className="flex items-start justify-between mb-8">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-          <ProfileCustomizerIcon size={40}/>
+          <AppIcon size={40}/>
         </div>
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -124,6 +124,9 @@ export const App: React.FC = () => {
       />
     </header>
   );
+
+  console.log('settingsError: ', settingsError)
+  console.log('orgsError: ', orgsError)
 
   return (
     <div className={clsx(

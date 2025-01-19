@@ -5,7 +5,7 @@ interface ProfileCustomizerIconProps {
   className?: string;
 }
 
-const ProfileCustomizerIcon: React.FC<ProfileCustomizerIconProps> = ({ size = 32, className = '', }) => {
+const AppIcon: React.FC<ProfileCustomizerIconProps> = ({ size = 32, className = '', }) => {
   return (
     <div className={className} style={{ width: size, height: size }}>
       <svg
@@ -97,4 +97,4 @@ const ProfileCustomizerIcon: React.FC<ProfileCustomizerIconProps> = ({ size = 32
   );
 };
 
-export default ProfileCustomizerIcon;
+export default AppIcon;

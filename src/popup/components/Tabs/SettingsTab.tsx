@@ -1,22 +1,19 @@
 import React from 'react';
-import type { Settings, Theme } from '@/types';
+import type { Settings, Theme, TabProps } from '@/types';
 import { SettingsGroup } from '@/popup/components/Supporting';
 import { THEMES } from '@/constants';
 import { ThemeButton } from '@/popup/components/ThemeButton';
 import { ColorPicker, ExportImport } from '@/popup/components/Configuration';
 
-interface TabProps {
-  settings: Settings;
-  onSettingChange: (key: keyof Settings) => (value: any) => void;
+interface SettingsTabProps extends TabProps {
+  onExport: () => void;
+  onImport: (settings: Settings) => void;
+  onThemeChange: (theme: Theme) => void;
+  onReset?: () => Promise<void>;
 }
 
-const SettingsTab: React.FC<TabProps & {
-  onExport: () => void,
-  onImport: (settings: Settings) => void,
-  onThemeChange: (theme: Theme) => void,
-  onReset?: () => Promise<void>
 // @ts-ignore
-}> = ({ settings, onSettingChange, onExport, onImport, onThemeChange, onReset }) => (
+const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSettingChange, onExport, onImport, onThemeChange, onReset }) => (
   <div className="space-y-8">
     {/* Display Settings */}
     <SettingsGroup

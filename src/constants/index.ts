@@ -19,6 +19,10 @@ import {
 } from '@heroicons/react/24/outline'
 import type { ProfileSection, Theme, KeyboardShortcut, Settings } from '@/types';
 
+export const EXTENSION_ID = 'github-profile-customizer'
+export const EXTENSION_AUTHOR = 'mralaminahamed'
+export const GITHUB_ISSUES_URL = `https://github.com/${EXTENSION_AUTHOR}/${EXTENSION_ID}/issues`;
+
 export const TABS = [
   { id: 'profile', name: 'Profile', icon: UserIcon },
   { id: 'activity', name: 'Activity', icon: ChartBarIcon },

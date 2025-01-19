@@ -1,5 +1,5 @@
 import React from 'react'
-import { Menu } from '@headlessui/react'
+import { Menu, Switch } from '@headlessui/react';
 import {
   Squares2X2Icon as ViewGridIcon,  // Changed from ViewGridIcon
   ListBulletIcon as ViewListIcon,   // Changed from ViewListIcon
@@ -13,7 +13,46 @@ import {
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx'
 import type { Settings } from '@/types'
-import { SwitchItem } from '@/popup/components/Configuration';
+
+interface SwitchItemProps {
+  title: string
+  description: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}
+
+export const SwitchItem: React.FC<SwitchItemProps> = ({ title, description, checked, onChange }) => (
+  <Switch.Group>
+    <div className="flex items-center justify-between">
+      <div className="flex-grow">
+        <Switch.Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {title}
+        </Switch.Label>
+        <Switch.Description className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {description}
+        </Switch.Description>
+      </div>
+      <Switch
+        checked={checked}
+        onChange={onChange}
+        className={clsx(
+          checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700',
+          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full',
+          'border-2 border-transparent transition-colors duration-200 ease-in-out',
+          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+        )}
+      >
+        <span
+          className={clsx(
+            checked ? 'translate-x-5' : 'translate-x-0',
+            'pointer-events-none relative inline-block h-5 w-5 transform rounded-full',
+            'bg-white shadow ring-0 transition duration-200 ease-in-out'
+          )}
+        />
+      </Switch>
+    </div>
+  </Switch.Group>
+)
 
 interface SettingsGroupProps {
   title: string

@@ -1,6 +1,6 @@
 import React from 'react';
-import { SettingsGroup } from '@/popup/components/Supporting';
 import type { Settings } from '@/types';
+import { SettingsGroup } from '@/popup/components/Supporting';
 
 interface TabProps {
   settings: Settings;

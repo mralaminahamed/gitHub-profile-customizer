@@ -2,14 +2,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import type { Organization, Settings, OrganizationType } from '@/types';
-import { ErrorMessage, GroupingSelector, SearchInput, SortSelector, ViewControls, QuickActionButton } from '@/popup/components/Supporting';
+import type { Organization, OrganizationType, TabProps } from '@/types';
 import type { OrganizationFilters } from '@/hooks/useOrganizationSearch';
-
-interface TabProps {
-  settings: Settings;
-  onSettingChange: (key: keyof Settings) => (value: any) => void;
-}
+import { ErrorMessage, GroupingSelector, SearchInput, SortSelector, ViewControls, QuickActionButton } from '@/popup/components/Supporting';
 
 interface OrganizationsTabProps extends TabProps {
   organizations: Organization[];

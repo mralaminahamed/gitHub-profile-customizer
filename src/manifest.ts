@@ -13,23 +13,23 @@ export async function getManifest() {
     description: pkg.description,
     action: {
       default_icon: {
-        16: './assets/icon-16.png',
-        48: './assets/icon-48.png',
-        128: './assets/icon-128.png',
+        16: './assets/icons/icon-16.png',
+        48: './assets/icons/icon-48.png',
+        128: './assets/icons/icon-128.png',
       },
       default_popup: './popup/index.html',
     },
-    options_ui: {
-      page: './options/index.html',
-      open_in_tab: true,
-    },
+    // options_ui: {
+    //   page: './options/index.html',
+    //   open_in_tab: true,
+    // },
     background: {
       service_worker: 'background/index.js',
     },
     icons: {
-      16: './assets/icon-16.png',
-      48: './assets/icon-48.png',
-      128: './assets/icon-128.png',
+      16: './assets/icons/icon-16.png',
+      48: './assets/icons/icon-48.png',
+      128: './assets/icons/icon-128.png',
     },
     permissions: [
       'storage',
@@ -37,7 +37,7 @@ export async function getManifest() {
     ],
     content_scripts: [{
       matches: ['https://github.com/*'],
-      js: ['./dist/contentScripts/index.global.js'],
+      js: ['./contentScripts/index.global.js'],
     }],
     host_permissions: ['https://github.com/*'],
     web_accessible_resources: [

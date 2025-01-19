@@ -176,3 +176,10 @@ export type MessageResponse =
   | SettingsResponse
   | ThemeResponse
   | BaseResponse
+
+
+
+export interface TabProps {
+  settings: Settings;
+  onSettingChange: (key: keyof Settings) => (value: any) => void;
+}
