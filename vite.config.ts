@@ -60,8 +60,8 @@ const baseConfig: UserConfig = {
 // Main extension pages (popup)
 const mainConfig: UserConfig = {
   ...baseConfig,
-  root: r('src'),
-  base: 'popup',
+  root: r('src/popup'),
+  base: '',
   build: {
     ...baseConfig.build,
     outDir: r('dist'),

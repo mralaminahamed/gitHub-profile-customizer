@@ -25,12 +25,7 @@ export function useOrganizations(
   const queryClient = useQueryClient();
 
   // Fetch organizations and stats
-  const {
-    data,
-    isLoading,
-    error,
-    refetch
-  } = useQuery<OrganizationState, Error, OrganizationState, OrganizationsQueryKey>({
+  const { data, isLoading, error, refetch } = useQuery<OrganizationState, Error, OrganizationState, OrganizationsQueryKey>({
     queryKey: organizationsQueryKey,
     queryFn: async (): Promise<OrganizationState> => {
       try {
@@ -91,10 +86,7 @@ export function useOrganizations(
   }, [data?.organizations]);
 
   // Filter organizations
-  const filterOrganizations = React.useCallback((
-    organizations: Organization[],
-    filters: UseOrganizationsFilters
-  ) => {
+  const filterOrganizations = React.useCallback((organizations: Organization[], filters: UseOrganizationsFilters) => {
     return organizations.filter(org => {
       // Search term filter
       if (filters.searchTerm) {
@@ -118,10 +110,7 @@ export function useOrganizations(
   }, []);
 
   // Update organization visibility
-  const updateOrganizationVisibility = React.useCallback(async (
-    organizationName: string,
-    isHidden: boolean
-  ) => {
+  const updateOrganizationVisibility = React.useCallback(async (organizationName: string, isHidden: boolean) => {
     try {
       const response = await sendMessage({
         type: 'updateOrganizationVisibility',
@@ -142,10 +131,7 @@ export function useOrganizations(
   }, [queryClient]);
 
   // Batch update organization visibility
-  const batchUpdateOrganizationVisibility = React.useCallback(async (
-    organizationNames: string[],
-    isHidden: boolean
-  ) => {
+  const batchUpdateOrganizationVisibility = React.useCallback(async (organizationNames: string[], isHidden: boolean) => {
     try {
       const response = await sendMessage({
         type: 'batchUpdateOrganizationVisibility',
@@ -164,6 +150,8 @@ export function useOrganizations(
       throw error;
     }
   }, [queryClient]);
+
+  console.log('error?.message', error?.message)
 
   return {
     // Data

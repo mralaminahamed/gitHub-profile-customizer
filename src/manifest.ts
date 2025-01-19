@@ -17,7 +17,7 @@ export async function getManifest() {
         48: './assets/icons/icon-48.png',
         128: './assets/icons/icon-128.png',
       },
-      default_popup: './popup/index.html',
+      default_popup: './index.html',
     },
     // options_ui: {
     //   page: './options/index.html',

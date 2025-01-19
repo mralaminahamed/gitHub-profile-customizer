@@ -1,5 +1,5 @@
 // src/contentScripts/GitHubProfileManager.ts
-import type { Organization, Settings } from '@/types';
+import type { Organization, OrganizationStats, Settings } from '@/types';
 import { SELECTORS } from './constants';
 
 export class GitHubProfileManager {
@@ -19,7 +19,6 @@ export class GitHubProfileManager {
       this.setupMutationObserver();
       this.setupThemeObserver();
       this.applySettings();
-      this.setupMessageListeners();
       this.initialized = true;
       return true;
     } catch (error) {
@@ -245,52 +244,6 @@ export class GitHubProfileManager {
     });
   }
 
-  private setupMessageListeners() {
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (!this.initialized) {
-        sendResponse({ error: 'Manager not initialized' });
-        return true;
-      }
-
-      this.handleMessage(message, sendResponse);
-      return true; // Required for async response
-    });
-  }
-
-  private async handleMessage(message: any, sendResponse: (response: any) => void) {
-    try {
-      switch (message.type) {
-        case 'getOrganizations':
-          sendResponse({ organizations: this.getOrganizations() });
-          break;
-
-        case 'updateSettings':
-          await this.updateSettings(message.settings);
-          sendResponse({ success: true });
-          break;
-
-        case 'getState':
-          sendResponse({
-            initialized: this.initialized,
-            settings: this.settings,
-          });
-          break;
-
-        case 'resetSettings':
-          await this.resetSettings();
-          sendResponse({ success: true });
-          break;
-
-        default:
-          sendResponse({ error: 'Unknown message type' });
-      }
-    } catch (error) {
-      sendResponse({
-        error: error instanceof Error ? error.message : 'An unknown error occurred'
-      });
-    }
-  }
-
   private applySettings() {
     if (!this.settings) return;
 
@@ -359,7 +312,6 @@ export class GitHubProfileManager {
     }, this.animationDuration);
   }
 
-
   public getOrganizations(): Organization[] {
     const orgs: Organization[] = [];
     document.querySelectorAll(SELECTORS.organizations.items).forEach(org => {
@@ -381,6 +333,20 @@ export class GitHubProfileManager {
       });
     });
     return orgs;
+  }
+
+  public getOrganizationStats(): OrganizationStats {
+    const organizations = this.getOrganizations();
+    const total = organizations.length;
+    const visible = organizations.filter(org => !org.isHidden).length;
+    const hidden = total - visible;
+
+    const byType = organizations.reduce((acc, org) => {
+      acc[org.type] = (acc[org.type] || 0) + 1;
+      return acc;
+    }, { personal: 0, business: 0, opensource: 0, other: 0 });
+
+    return { total, visible, hidden, byType };
   }
 
   private determineOrgType(element: Element): 'personal' | 'business' | 'opensource' | 'other' {

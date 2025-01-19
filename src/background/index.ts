@@ -2,6 +2,55 @@ import browser from 'webextension-polyfill'
 import type { Message, MessageResponse, Settings } from '@/types'
 import { DEFAULT_SETTINGS, GITHUB_ISSUES_URL } from '@/constants';
 
+// Track initialized tabs
+const initializedTabs = new Set<number>()
+
+// Ensure content script is loaded and initialized
+async function ensureContentScript(tabId: number): Promise<boolean> {
+  if (initializedTabs.has(tabId)) {
+    return true
+  }
+
+  try {
+    // Try to ping the content script
+    await browser.tabs.sendMessage(tabId, { type: 'ping' })
+    initializedTabs.add(tabId)
+    return true
+  } catch (error) {
+    // Content script not loaded or not initialized
+    try {
+      // Check if we're on a GitHub page
+      const tab = await browser.tabs.get(tabId)
+      if (!tab.url?.startsWith('https://github.com')) {
+        return false
+      }
+
+      // Inject content script
+      await browser.scripting.executeScript({
+        target: { tabId },
+        files: ['./contentScripts/index.global.js']
+      })
+
+      // Wait for initialization
+      let attempts = 0
+      const maxAttempts = 5
+      while (attempts < maxAttempts) {
+        try {
+          await browser.tabs.sendMessage(tabId, { type: 'ping' })
+          initializedTabs.add(tabId)
+          return true
+        } catch {
+          attempts++
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+}
+
 // Type guard for Message type
 function isValidMessage(message: unknown): message is Message {
   return (
@@ -26,6 +75,12 @@ browser.runtime.onMessage.addListener(
 
       if (!activeTab?.id) {
         return { error: 'No active tab found' }
+      }
+
+      // Ensure content script is loaded and initialized
+      const isInitialized = await ensureContentScript(activeTab.id)
+      if (!isInitialized) {
+        return { error: 'Failed to initialize content script' }
       }
 
       // Handle messages based on type
@@ -56,9 +111,6 @@ browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     // Set default settings on installation
     await browser.storage.sync.set({ settings: DEFAULT_SETTINGS })
-
-    // Open options page on install
-    await browser.runtime.openOptionsPage()
   } else if (details.reason === 'update') {
     // Handle extension updates
     const { settings } = await browser.storage.sync.get('settings')
@@ -74,6 +126,9 @@ browser.runtime.onInstalled.addListener(async (details) => {
       await browser.storage.sync.set({ settings: DEFAULT_SETTINGS })
     }
   }
+
+  // Clear initialized tabs on install/update
+  initializedTabs.clear()
 })
 
 // Handle uninstallation
@@ -82,10 +137,10 @@ browser.runtime.setUninstallURL(GITHUB_ISSUES_URL)
 // Listen for changes in storage
 browser.storage.onChanged.addListener(async (changes) => {
   if (changes.settings) {
-    // Notify all GitHub tabs about settings changes
+    // Notify all initialized GitHub tabs about settings changes
     const githubTabs = await browser.tabs.query({ url: 'https://github.com/*' })
     for (const tab of githubTabs) {
-      if (tab.id) {
+      if (tab.id && initializedTabs.has(tab.id)) {
         try {
           await browser.tabs.sendMessage(tab.id, {
             type: 'updateSettings',
@@ -93,6 +148,7 @@ browser.storage.onChanged.addListener(async (changes) => {
           })
         } catch (error) {
           console.error(`Failed to update settings for tab ${tab.id}:`, error)
+          initializedTabs.delete(tab.id)
         }
       }
     }
@@ -100,34 +156,29 @@ browser.storage.onChanged.addListener(async (changes) => {
 })
 
 // Handle tab updates
-browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-  if (changeInfo.status === 'complete') {
-    const tab = await browser.tabs.get(tabId)
-    if (tab.url?.startsWith('https://github.com')) {
-      // Inject content script if needed
-      try {
-        await browser.tabs.sendMessage(tabId, { type: 'ping' })
-      } catch {
-        // Content script not loaded, inject it
-        await browser.scripting.executeScript({
-          target: { tabId },
-          files: ['./contentScripts/index.global.js'],
-        })
-      }
-    }
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url?.startsWith('https://github.com')) {
+    initializedTabs.delete(tabId)
+    await ensureContentScript(tabId)
   }
+})
+
+// Handle tab removal
+browser.tabs.onRemoved.addListener((tabId) => {
+  initializedTabs.delete(tabId)
 })
 
 // Handle extension context invalidation
 browser.runtime.onSuspend.addListener(async () => {
   const githubTabs = await browser.tabs.query({ url: 'https://github.com/*' })
   for (const tab of githubTabs) {
-    if (tab.id) {
+    if (tab.id && initializedTabs.has(tab.id)) {
       try {
         await browser.tabs.sendMessage(tab.id, { type: 'cleanup' })
       } catch (error) {
         console.error(`Failed to cleanup tab ${tab.id}:`, error)
       }
+      initializedTabs.delete(tab.id)
     }
   }
 })
