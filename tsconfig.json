@@ -23,10 +23,9 @@
     },
     "types": [
       "vite/client",
-      "chrome",
       "node",
-      "@types/chrome",
-      "@types/webextension-polyfill"
+      "chrome",
+      "webextension-polyfill"
     ]
   },
   "include": [
